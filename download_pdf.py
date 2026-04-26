@@ -2,7 +2,7 @@
 """Download PDF files from a range of codes (140102-140502).
 
 Example:
-    python download_doc.py --start 1 --end 5 --output downloaded
+    python download_doc.py --start 1 --end 5 --output pdf
 """
 
 from __future__ import annotations
