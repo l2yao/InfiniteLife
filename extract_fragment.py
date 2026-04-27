@@ -1,9 +1,23 @@
 import os
 import sys
+import tempfile
 import torch
 from pydub import AudioSegment
 import stable_whisper
 from fuzzywuzzy import process
+
+def _transcribe_segment(model, segment, format="wav"):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{format}") as tmp:
+        segment.export(tmp.name, format=format)
+        tmp_path = tmp.name
+    try:
+        result = model.transcribe(tmp_path)
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+    return result
 
 def find_fragment(audio_path, transcript_path):
     print(f"🔄 Processing {os.path.basename(audio_path)}...")
@@ -18,12 +32,13 @@ def find_fragment(audio_path, transcript_path):
     model = stable_whisper.load_model("medium", device=device)
     
     # Transcribe first 3 minutes
-    rough1 = model.transcribe(audio_path, start=0, end=min(180, duration))
+    end_first_ms = int(min(180, duration) * 1000)
+    rough1 = _transcribe_segment(model, audio[:end_first_ms])
     rough1_text = " ".join([s.text for s in rough1.segments])
     
     # Transcribe last 3 minutes
-    start_last = max(0, duration - 180)
-    rough2 = model.transcribe(audio_path, start=start_last, end=duration)
+    start_last_ms = int(max(0, duration - 180) * 1000)
+    rough2 = _transcribe_segment(model, audio[start_last_ms:])
     rough2_text = " ".join([s.text for s in rough2.segments])
 
     # 2. Load master transcript
