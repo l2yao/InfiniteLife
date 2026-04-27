@@ -1,4 +1,5 @@
 import os
+import sys
 import torch
 import stable_whisper
 from fuzzywuzzy import process
@@ -9,7 +10,8 @@ def find_fragment(audio_path, transcript_path):
     # 1. Get a rough transcription of the audio for matching
     # Using 'tiny' model, which is efficient for local CPU usage
     print("🔄 Generating rough transcription for matching...")
-    model = stable_whisper.load_model("tiny", device="cpu")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = stable_whisper.load_model("medium", device=device)
     rough = model.transcribe(audio_path)
     
     # Concatenate segments into a single string for matching
@@ -42,9 +44,11 @@ def find_fragment(audio_path, transcript_path):
     print(f"✅ Extracted segment saved to: {output_path}")
 
 if __name__ == "__main__":
-    # Example usage:
-    # Update paths to match your directory
-    audio = r"C:\Users\Long\Documents\InfiniteLife\mp3\1401001.mp3"
-    txt = r"C:\Users\Long\Documents\InfiniteLife\txt\140102.txt"
+    if len(sys.argv) != 3:
+        print("Usage: python extract_fragment.py <audio_path> <transcript_path>")
+        sys.exit(1)
     
-    find_fragment(audio, txt)
+    audio_path = sys.argv[1]
+    transcript_path = sys.argv[2]
+    
+    find_fragment(audio_path, transcript_path)
