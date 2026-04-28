@@ -1,0 +1,5 @@
+torch
+pydub
+stable-whisper
+fuzzywuzzy
+pypdf

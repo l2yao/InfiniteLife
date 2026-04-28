@@ -51,15 +51,22 @@ def find_fragment(audio_path, transcript_path):
 
     # 3. Find the best matching chunk for the start and end segments separately
     # Splitting by double newline, common in transcripts. 
-    # Adjust this logic if your text uses different formatting.
     chunks = [c for c in master_text.split('\n\n') if len(c) > 50]
-    start_match, start_score = process.extractOne(rough1_text, chunks)
-    end_match, end_score = process.extractOne(rough2_text, chunks)
+
+    # Restrict search space: Start match in first 25%, end match in last 25%
+    total_chunks = len(chunks)
+    search_start_space = chunks[:max(1, total_chunks // 4)]
+    search_end_space = chunks[max(0, 3 * total_chunks // 4):]
+
+    start_match, start_score = process.extractOne(rough1_text, search_start_space)
+    end_match, end_score = process.extractOne(rough2_text, search_end_space)
+    
     start_index = chunks.index(start_match)
+    # Find index of end_match in the original chunks list
     end_index = chunks.index(end_match)
 
-    print(f"🎯 Found start segment (score: {start_score})")
-    print(f"🎯 Found end segment (score: {end_score})")
+    print(f"🎯 Found start segment (score: {start_score}, index: {start_index})")
+    print(f"🎯 Found end segment (score: {end_score}, index: {end_index})")
 
     if start_index <= end_index:
         matched_text = "\n\n".join(chunks[start_index:end_index + 1])
