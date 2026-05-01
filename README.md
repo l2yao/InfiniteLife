@@ -68,6 +68,6 @@ The script creates a `.txt` file next to the transcript containing the matched t
 
 ## Notes
 
-- `extract_fragment.py` requires a local speech model and uses `stable-whisper`, `pydub`, `torch`, and `fuzzywuzzy`.
+- `extract_fragment.py` requires a local speech model and uses `stable-whisper`, `pydub`, and `torch`.
 - `pdf_to_txt.py` uses `pypdf` for PDF extraction.
 - Make sure you have `ffmpeg` installed if `pydub` needs it for audio conversions.

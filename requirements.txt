@@ -1,5 +1,4 @@
 torch
 pydub
-stable-whisper
-fuzzywuzzy
+stable-ts
 pypdf
