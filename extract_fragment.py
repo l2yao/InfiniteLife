@@ -35,6 +35,10 @@ except ImportError:  # pragma: no cover - torch is optional for device detection
 
 DEFAULT_CLIP_SECONDS = 180
 DEFAULT_MODEL = "medium"
+SENTENCE_TERMINATORS = frozenset(".!?\u3002\uff0e\uff61\uff01\uff1f\u2026")
+CLOSING_SENTENCE_PUNCTUATION = frozenset(
+    "\"')]}>\u2019\u201d\u3009\u300b\u300d\u300f\u3011\uff09\uff3d\uff5d"
+)
 
 
 @dataclass(frozen=True)
@@ -52,6 +56,48 @@ class Match:
     token_end: int
     score: float
     preview: str
+
+
+def skip_fragment_leading_space(text: str, index: int) -> int:
+    while index < len(text) and text[index].isspace():
+        index += 1
+    return index
+
+
+def consume_sentence_closers(text: str, index: int) -> int:
+    while index < len(text) and text[index] in CLOSING_SENTENCE_PUNCTUATION:
+        index += 1
+    return index
+
+
+def consume_ellipsis(text: str, index: int) -> int:
+    while index < len(text) and text[index] == "\u2026":
+        index += 1
+    return index
+
+
+def expand_to_sentence_boundaries(text: str, start: int, end: int) -> tuple[int, int]:
+    """Expand a raw match slice so it starts and ends on sentence boundaries."""
+
+    start = max(0, min(start, len(text)))
+    end = max(start, min(end, len(text)))
+
+    sentence_start = 0
+    for index in range(start - 1, -1, -1):
+        if text[index] in SENTENCE_TERMINATORS:
+            sentence_start = skip_fragment_leading_space(
+                text,
+                consume_sentence_closers(text, consume_ellipsis(text, index + 1)),
+            )
+            break
+
+    sentence_end = len(text)
+    for index in range(max(0, end - 1), len(text)):
+        if text[index] in SENTENCE_TERMINATORS:
+            sentence_end = consume_sentence_closers(text, consume_ellipsis(text, index + 1))
+            break
+
+    return sentence_start, max(sentence_start, sentence_end)
 
 
 def iter_normalized_units(text: str) -> Iterable[tuple[str, int, int]]:
@@ -320,8 +366,19 @@ def extract_fragment(
     if output_path is None:
         output_path = transcript_path.with_name(f"{audio_path.stem}.txt")
 
+    fragment_start, fragment_end = expand_to_sentence_boundaries(
+        transcript,
+        start_match.raw_start,
+        end_match.raw_end,
+    )
+    if fragment_start != start_match.raw_start or fragment_end != end_match.raw_end:
+        print(
+            "Expanded fragment to sentence boundaries: "
+            f"{start_match.raw_start}:{end_match.raw_end} -> {fragment_start}:{fragment_end}"
+        )
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(transcript[start_match.raw_start : end_match.raw_end].strip() + "\n", encoding="utf-8")
+    output_path.write_text(transcript[fragment_start:fragment_end].strip() + "\n", encoding="utf-8")
     return output_path
 
 
